@@ -4,7 +4,7 @@ A Lua Script with all the random stuff I come up with and gets suggested.
 
 Check Releases for Changelog
 
-###Features include: 
+### Features include: 
 
 ```
 Vehicle:
@@ -22,6 +22,6 @@ Self:
 -And much more too come.
 
 ```
-###Installation:
+### Installation:
 Drop LAZScript.lua and the lib folder in Lua Scripts folder.
 
