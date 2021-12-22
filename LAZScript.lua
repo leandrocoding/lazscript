@@ -1,6 +1,6 @@
 -- LAZScript (lazscript.zazzi.dev)
 -- Script made by LAZ13#3376
--- Version 1.0 (22.12.2021)
+-- Version 1.1 (22.12.2021)
 util.require_no_lag("natives-1640181023")
 -- Main Roots
 lazveh = menu.list(menu.my_root(),"Vehicle Apearance",{"lazveh"}, "Vehicle customisation")
@@ -14,6 +14,9 @@ currentWheelsColor = 0
 currentPearlescentColor = 0
 currentPrimaryColor = 0
 currentSecondaryColor = 0
+
+currentAccentColor = 0
+currentTrimColor = 0
 
 primcolSel = menu.list(lazveh, "Primary Color", {"lazprimcol"}, "Primary Color")
 primcollist = menu.list(primcolSel, "Select Primary  from List", {}, "Select Primary  from List")
@@ -45,10 +48,20 @@ end)
 
 pearlescentmenu = menu.list(lazveh, "Pearlescent", {"pearlescent"}, "Pearlescent color")
 WheelsColMenu = menu.list(lazveh, "Wheels Color", {"wheelscolor"}, "Wheels color")
+accentColorMenu = menu.list(lazveh, "Accent Color", {"accentcolor"}, "Accent color")
+trimColorMenu = menu.list(lazveh, "Trim Color", {"trimcolor"}, "Trim color")
+
 pearlcolsel = menu.list(pearlescentmenu, "Select Pearlescent from List",{},"Select Pearlescent Color")
 wheelcolsel = menu.list(WheelsColMenu, "Select Wheels color from List",{},"Select Wheels Color")
+accentcolsel = menu.list(accentColorMenu, "Select Accent color from List",{},"Select Accent Color")
+trimcolsel = menu.list(trimColorMenu, "Select Trim color from List",{},"Select Trim Color")
 wheelcolRainbow = false
+pearlcolRainbow = false
+accentcolRainbow = false
+trimcolRainbow = false
+
 currainbowdelay = 0
+
 
 setpearlslide = menu.slider(pearlescentmenu, "Metallic Black", {"setpearl"},"Set the pearlescent with the color value.",0, #vehicleData-1, currentPearlescentColor,1, function(on)
     local veh = entities.get_user_vehicle_as_handle()
@@ -67,8 +80,27 @@ setwheelcolor = menu.slider(WheelsColMenu, "Metallic Black", {"setwheelcolor"},"
     end
 end)
 
+setaccentcol = menu.slider(accentColorMenu, "Metallic Black", {"setaccentcolor"},"Set the accent color with the color value.",0, #vehicleData-1, currentAccentColor,1, function(on)
+    local veh = entities.get_user_vehicle_as_handle()
+    menu.set_menu_name(setaccentcol, "Accent: " .. vehicleData[on+1][2])
+    currentAccentColor = on
+    if veh then
+        VEHICLE._SET_VEHICLE_DASHBOARD_COLOR(veh,currentAccentColor)
+    end
+end)
+
+settrimcol = menu.slider(trimColorMenu, "Metallic Black", {"settrimcolor"},"Set the trim color with the color value.",0, #vehicleData-1, currentTrimColor,1, function(on)
+    local veh = entities.get_user_vehicle_as_handle()
+    menu.set_menu_name(settrimcol, "Trim: " .. vehicleData[on+1][2])
+    currentTrimColor = on
+    if veh then
+        VEHICLE._SET_VEHICLE_INTERIOR_COLOR(veh,currentTrimColor)
+    end
+end)
+
+
 menu.slider(WheelsColMenu, "Loop", {"rainbowWheelColors"}, "Automaticly Loops threw all avalible Wheel colors with a delay of x ms.",0,1000,0,1,function(on)
-    currainbowdelay = on
+    currainbowdelaywheels = on
     if on == 0 then
         wheelcolRainbow = false
     else
@@ -76,6 +108,37 @@ menu.slider(WheelsColMenu, "Loop", {"rainbowWheelColors"}, "Automaticly Loops th
     end
          
 end)
+
+menu.slider(pearlescentmenu, "Loop", {"rainbowPearlescentColors"}, "Automaticly Loops threw all avalible Pearlescent colors with a delay of x ms.",0,1000,0,1,function(on)
+    currainbowdelaypearl = on
+    if on == 0 then
+        pearlcolRainbow = false
+    else
+        pearlcolRainbow = true
+    end
+         
+end)
+
+menu.slider(accentColorMenu, "Loop", {"rainbowAccentColors"}, "Automaticly Loops threw all avalible Accent colors with a delay of x ms.",0,1000,0,1,function(on)
+    currainbowdelayaccent = on
+    if on == 0 then
+        accentcolRainbow = false
+    else
+        accentcolRainbow = true
+    end
+         
+end)
+
+menu.slider(trimColorMenu, "Loop", {"rainbowTrimColors"}, "Automaticly Loops threw all avalible Trim colors with a delay of x ms.",0,1000,0,1,function(on)
+    currainbowdelaytrim = on
+    if on == 0 then
+        trimcolRainbow = false
+    else
+        trimcolRainbow = true
+    end
+         
+end)
+
 
 for i,v in pairs(vehicleData) do
 
@@ -94,6 +157,14 @@ for i,v in pairs(vehicleData) do
     menu.action(seccolllist, v[2],{}, "", function(on)
         menu.trigger_command(setseccolslider, v[1])
     end)
+
+    menu.action(accentcolsel, v[2],{}, "", function(on)
+        menu.trigger_command(setaccentcol, v[1])
+    end)
+    
+    menu.action(trimcolsel, v[2],{}, "", function(on)
+        menu.trigger_command(settrimcol, v[1])
+    end)
     
 end
 
@@ -105,11 +176,20 @@ function updateCurrentVals()
     if veh then
         local a = memory.alloc(8)
         local b = memory.alloc(8)
-        local res = VEHICLE.GET_VEHICLE_EXTRA_COLOURS(veh,a,b)
+        local c = memory.alloc(8)
+        local d = memory.alloc(8)
+
+        VEHICLE.GET_VEHICLE_EXTRA_COLOURS(veh,a,b)
+        VEHICLE._GET_VEHICLE_DASHBOARD_COLOR(veh,c)
+        VEHICLE._GET_VEHICLE_INTERIOR_COLOR(veh,d)
         currentPearlescentColor = memory.read_int(a)
         currentWheelsColor = memory.read_int(b)
+        currentAccentColor = memory.read_int(c)
+        currentTrimColor = memory.read_int(d)
         menu.trigger_command(setpearlslide, currentPearlescentColor)
         menu.trigger_command(setwheelcolor, currentWheelsColor)
+        menu.trigger_command(setaccentcol, currentAccentColor)
+        menu.trigger_command(settrimcol, currentTrimColor)
     end
 end
 
@@ -123,6 +203,48 @@ function rainbowWheelColors()
                 nextWheelColor = 0
             end
             menu.trigger_command(setwheelcolor, nextWheelColor)
+        end
+    end
+end
+
+function rainbowPearlescentColors()
+    if pearlcolRainbow then
+        local veh = entities.get_user_vehicle_as_handle()
+        if veh then
+            
+            local nextPearlescentColor = currentPearlescentColor + 1
+            if nextPearlescentColor > #vehicleData-1 then
+                nextPearlescentColor = 0
+            end
+            menu.trigger_command(setpearlslide, nextPearlescentColor)
+        end
+    end
+end
+
+function rainbowAccentColors()
+    if accentcolRainbow then
+        local veh = entities.get_user_vehicle_as_handle()
+        if veh then
+            
+            local nextAccentColor = currentAccentColor + 1
+            if nextAccentColor > #vehicleData-1 then
+                nextAccentColor = 0
+            end
+            menu.trigger_command(setaccentcol, nextAccentColor)
+        end
+    end
+end
+
+function rainbowTrimColors()
+    if trimcolRainbow then
+        local veh = entities.get_user_vehicle_as_handle()
+        if veh then
+            
+            local nextTrimColor = currentTrimColor + 1
+            if nextTrimColor > #vehicleData-1 then
+                nextTrimColor = 0
+            end
+            menu.trigger_command(settrimcol, nextTrimColor)
         end
     end
 end
@@ -163,9 +285,29 @@ end)
 
 util.create_tick_handler(function() 
     rainbowWheelColors()
-    util.yield(currainbowdelay)
+    util.yield(currainbowdelaywheels)
     return true
 end)
+
+util.create_tick_handler(function() 
+    rainbowPearlescentColors()
+    util.yield(currainbowdelaypearl)
+    return true
+end)
+
+util.create_tick_handler(function() 
+    rainbowAccentColors()
+    util.yield(currainbowdelayaccent)
+    return true
+end)
+
+util.create_tick_handler(function() 
+    rainbowTrimColors()
+    util.yield(currainbowdelaytrim)
+    return true
+end)
+
+
 -- SELF
 
 
