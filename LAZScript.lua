@@ -1,10 +1,12 @@
--- LAZScript (lazscript.zazzi.dev)
+-- LAZScript (https://github.com/leandrocoding/lazscript)
 -- Script made by LAZ13#3376
--- Version 1.1 (22.12.2021)
-util.require_no_lag("natives-1640181023")
+-- Version 1.2 (05.09.2022)
+util.require_natives(1660775568)
+
 -- Main Roots
 lazveh = menu.list(menu.my_root(),"Vehicle Apearance",{"lazveh"}, "Vehicle customisation")
 lazself = menu.list(menu.my_root(),"Self",{"lazself"}, "Stuff concerning your character")
+lazdrift = menu.list(menu.my_root(), "LAZDrift", {"lazdrift"}, "LAZDrift, Drift around with ease.")
 
 -- Vehicle Customisation
 
@@ -345,5 +347,318 @@ end)
 menu.action(lazragdoll, "Give Up-n-Atomisierer", {}, "You can use this to ragdoll yourself and even jump around while Ragdolling. You have to disable Godmode to be able to hityourself with it. Executes getgunsupnatomisierer to give you an Up-n-Atomisierer", function(on)
     menu.trigger_commands("getgunsupnatomisierer")
 end)
+
+
+-- LAZDrift
+-- Configurables (also configurable from ingame)
+
+local gs_driftMinSpeed = 8.0
+local gs_driftMaxAngle = 50.0
+local ControlVehicleAccelerate = 71
+local ControlVehicleBrake = 72
+local ControlVehicleDuck = 73
+local ControlVehicleSelectNextWeapon = 99
+local ControlVehicleMoveUpOnly = 61
+local INPUT_FRONTEND_LS = 209
+local DriftActivateKeyboard = INPUT_FRONTEND_LS
+local maxGearWhileDrifting = 2
+local conterSteeringEnabled = true
+local useshiftForDrift = true
+local useDuckForDrift = true
+local standDriftHotkeyPressed = false
+
+-- Big thanks to jayphen#6666, Murten#8818 and aaronlink127#0127 for this:
+CurrentGearOffset = memory.scan("A8 02 0F 84 ? ? ? ? 0F B7 86")+11
+NextGearOffset = memory.scan("A8 02 0F 84 ? ? ? ? 0F B7 86")+18
+
+util.require_natives("1640181023")
+
+textDrawCol = {
+    r = 255,
+    g = 255,
+    b = 255,
+    a = 255
+}
+
+local function asDegrees(angle)
+    return angle * (180.0 / 3.14159265357); 
+end
+
+local function wrap360(val) 
+    --    this may be the same as:
+    --      return math.fmod(val + 360, 360)
+    --    but wierd things happen
+    while (val < 0.0) do
+        val = val + 360.0
+    end
+    while (val > 360.0) do
+        val = val - 360.0
+    end
+    return val
+end
+
+local function getCurrentVehicle() 
+	local player_id = PLAYER.PLAYER_ID()
+	local player_ped = PLAYER.GET_PLAYER_PED(player_id)
+    local player_vehicle = 0
+    if (PED.IS_PED_IN_ANY_VEHICLE(player_ped)) then
+        veh = PED.GET_VEHICLE_PED_IS_USING(player_ped)
+        if (NETWORK.NETWORK_HAS_CONTROL_OF_ENTITY(veh)) then
+            player_vehicle = veh
+        end 
+    end
+    return player_vehicle
+end
+
+
+local function getHeadingOfTravel(veh) 
+    local velocity = ENTITY.GET_ENTITY_VELOCITY(veh)
+
+    local x = velocity.x
+    local y = velocity.y
+    local at2 = math.atan(y, x)
+    return math.fmod(270.0 + math.deg(at2), 360.0)
+end
+
+local function slamDatBitch(veh, height) 
+    if (VEHICLE.IS_VEHICLE_ON_ALL_WHEELS(veh) and not ENTITY.IS_ENTITY_IN_AIR(veh)) then
+     
+        ENTITY.APPLY_FORCE_TO_ENTITY(veh, 1,    0, 0, height,    0, 0, 0,   true, true)
+    end
+end
+
+function getCurGear()
+    return memory.read_byte(entities.get_user_vehicle_as_pointer() +memory.read_int(CurrentGearOffset))
+end
+
+function getNextGear()
+    return memory.read_byte(entities.get_user_vehicle_as_pointer() +memory.read_int(NextGearOffset))
+end
+
+function setCurGear(gear)
+    memory.write_byte(entities.get_user_vehicle_as_pointer() +memory.read_int(CurrentGearOffset), gear)
+end
+
+function setNextGear(gear)
+    memory.write_byte(entities.get_user_vehicle_as_pointer() +memory.read_int(NextGearOffset), gear)
+end
+
+local isDrifting      = 0
+local wasDrifting     = 0
+local isDriftFinished = 1
+local prevGripState   = 0
+local lastDriftAngle  = 0.0
+local oldGripState    = 0
+local debug_notification = 0
+
+local function driftmod_ontick() 
+    local player = players.user()
+    local veh = getCurrentVehicle()
+   
+
+    local inVehicle   = veh ~= 0
+    local isDriving   = true
+
+    local mps = ENTITY.GET_ENTITY_SPEED(veh)
+    local mph       = mps * 2.23694
+    local kmh       = mps * 3.6
+
+    if inVehicle and isDriving and not isDrifting and not isDriftFinished then
+        isDriftFinished = true
+    end
+
+    if not inVehicle or not isDriving then
+        return
+    end
+
+    local driftKeyPressed = PAD.IS_CONTROL_PRESSED(2, ControlVehicleDuck) or PAD.IS_DISABLED_CONTROL_PRESSED(2, ControlVehicleDuck) or PAD.IS_CONTROL_PRESSED(0, DriftActivateKeyboard) or PAD.IS_DISABLED_CONTROL_PRESSED(0, DriftActivateKeyboard) or standDriftHotkeyPressed
+    local driftKeyPressed = false
+
+    if standDriftHotkeyPressed then
+        driftKeyPressed = true
+    else if (PAD.IS_CONTROL_PRESSED(2, ControlVehicleDuck) or PAD.IS_DISABLED_CONTROL_PRESSED(2, ControlVehicleDuck)) and useDuckForDrift then
+        driftKeyPressed = true
+    else if (PAD.IS_CONTROL_PRESSED(0, DriftActivateKeyboard) or PAD.IS_DISABLED_CONTROL_PRESSED(0, DriftActivateKeyboard)) and useshiftForDrift then 
+        driftKeyPressed = true
+    end
+    end
+    end
+
+    if (driftKeyPressed and getCurGear(veh) > maxGearWhileDrifting) then
+        setCurGear(maxGearWhileDrifting)
+        setNextGear(maxGearWhileDrifting)
+    end
+    if driftKeyPressed then
+         
+        if (PAD.GET_CONTROL_NORMAL(2, ControlVehicleBrake) > 0.1) then
+            PAD._SET_CONTROL_NORMAL(0, ControlVehicleBrake, 0)
+            local neg = -0.3
+
+            if (PAD.IS_CONTROL_PRESSED(2, ControlVehicleSelectNextWeapon)) then
+                neg = 10
+            end
+
+            slamDatBitch(veh, neg * 1 * PAD.GET_CONTROL_NORMAL(2, ControlVehicleBrake))
+        end 
+
+        local angleOfTravel  = getHeadingOfTravel(veh)
+        local angleOfHeading = ENTITY._GET_ENTITY_PHYSICS_HEADING(veh)
+        
+        local driftAngle = angleOfHeading - angleOfTravel
+
+        if driftAngle and lastDriftAngle then
+            local diff = driftAngle - lastDriftAngle
+
+            if diff > 180.0 then
+                driftAngle = driftAngle - 360.0
+            end
+            if diff < 180.0 then
+                driftAngle = driftAngle - 360.0
+            end
+        end
+
+        driftAngle     = wrap360(driftAngle)
+        lastDriftAngle = driftAngle
+
+        local zeroBasedDriftAngle = 360 - driftAngle
+        if zeroBasedDriftAngle > 180 then
+            zeroBasedDriftAngle = 0 - (360 - zeroBasedDriftAngle)
+        end
+
+        directx.draw_text(0,0,"Drift Angle: " .. math.floor(zeroBasedDriftAngle) .. "°", ALIGN_TOP_CENTRE,1,textDrawCol)
+        local done = false
+        if ((isDrifting or kmh > gs_driftMinSpeed) and (math.abs(driftAngle - 360.0) < gs_driftMaxAngle) or (driftAngle < gs_driftMaxAngle)) then
+            isDrifting      = 1
+            isDriftFinished = 1;  -- Doesn't get set to 0 until isDrifting is 0.
+
+            if driftKeyPressed then
+                 
+                if driftKeyPressed ~= oldGripState then
+                    VEHICLE.SET_VEHICLE_REDUCE_GRIP(veh, driftKeyPressed)
+                    oldGripState = driftKeyPressed
+                end
+            end
+            done = true
+        end
+
+        if not done and kmh < gs_driftMinSpeed then
+            if driftKeyPressed then
+                if driftKeyPressed ~= oldGripState then
+                    VEHICLE.SET_VEHICLE_REDUCE_GRIP(veh, driftKeyPressed)
+                    oldGripState = driftKeyPressed
+                end
+            end
+            done = true
+        end
+
+        if not done then
+            if driftKeyPressed == oldGripState then
+                VEHICLE.SET_VEHICLE_REDUCE_GRIP(veh, false)
+                oldGripState = 0
+            end
+
+            if math.abs(zeroBasedDriftAngle) > gs_driftMaxAngle and conterSteeringEnabled then
+                if zeroBasedDriftAngle > 0 then
+                    VEHICLE.SET_VEHICLE_INDICATOR_LIGHTS(veh, 0, true)
+                    VEHICLE.SET_VEHICLE_INDICATOR_LIGHTS(veh, 1, false)
+
+                 
+                    util.toast("Counter-steering left ")
+                    
+                    VEHICLE.SET_VEHICLE_STEER_BIAS(veh, math.rad(zeroBasedDriftAngle * 0.69))
+              
+                else
+                    VEHICLE.SET_VEHICLE_INDICATOR_LIGHTS(veh, 1, true)
+                    VEHICLE.SET_VEHICLE_INDICATOR_LIGHTS(veh, 0, false)
+              
+
+                    util.toast("Counter-steering right")
+
+                    VEHICLE.SET_VEHICLE_STEER_BIAS(veh, math.rad(zeroBasedDriftAngle * 0.69))
+      
+                end
+            end
+		else 
+			VEHICLE.SET_VEHICLE_INDICATOR_LIGHTS(veh, 0, false)
+			VEHICLE.SET_VEHICLE_INDICATOR_LIGHTS(veh, 1, false)
+        end
+    end
+
+    if not driftKeyPressed and prevGripState then
+        isDrifting      = 0
+        isDriftFinished = 0
+        lastDriftAngle = 0
+
+        if driftKeyPressed ~= oldGripState then
+            VEHICLE.SET_VEHICLE_REDUCE_GRIP(veh, driftKeyPressed)
+            oldGripState = driftKeyPressed
+        end
+    end
+
+    prevGripState = driftKeyPressed
+    if isDrifting ~= wasDrifting then
+        wasDrifting     = isDrifting
+        changedDrifting = true
+    end
+end
+
+
+menu.toggle_loop(lazdrift,"Driftmode", {"drift"},"Press LShift to drift",function(on)
+	driftmod_ontick()
+
+end)
+lazdriftSetings = menu.list(lazdrift, "Settings", {}, "")
+lazdriftControlls = menu.list(lazdriftSetings, "Controlls Settings", {}, "")
+
+menu.slider(lazdriftSetings,"Drift Min Speed /100", {"driftMinSpeed"}, "/100 \nDefault: 8.0kmh", 0, 10000, gs_driftMinSpeed*100, 1, function(on)
+    gs_driftMinSpeed = on/100
+end)
+
+menu.toggle(lazdriftSetings,"Automatic ConterSteering", {"conterSteering"}, "Default: True", function(on)
+    conterSteeringEnabled = on
+end, true)
+
+menu.toggle(lazdriftControlls,"Use Shift to Drift", {"shifttodrift"}, "Default: True", function(on)
+    useshiftForDrift = on
+end, true)
+menu.toggle(lazdriftControlls,"Use Duck to Drift", {"ducktodrift"}, "Default: True, Duck is normaly X on keyboard and A on controller", function(on)
+    useduckForDrift = on
+end, true)
+
+menu.toggle(lazdriftControlls,"Custom Key Drift", {"customdrifthotkey"}, "Set a Hotkey for this with Hold mode. \n Hover over this option, Press Numpad 3 --> Add Hotkey --> go into Hotkeys -> Click on created Hotkey -> enable Holdmode.", function(on)
+    if on then
+        standDriftHotkeyPressed = true
+    else
+        standDriftHotkeyPressed = false
+    end
+end, false)
+
+menu.slider(lazdriftSetings,"SetMaxGear ", {"maxGearWhileDrifting"}, "Default: 2", 1, 6,maxGearWhileDrifting , 1, function(newmaxGearWhileDrifting)
+    maxGearWhileDrifting = newmaxGearWhileDrifting
+end)
+
+menu.slider(lazdriftSetings,"Drift Max Angle /100", {"driftMaxAngle"}, "/100 \nDefault: 50.0° (5000/100)", 0, 10000,gs_driftMaxAngle*100, 1, function(on)
+    gs_driftMaxAngle = on/100
+end)
+
+menu.colour(lazdriftSetings,"Text Colour", {"lazdrifttextcol"}, "", textDrawCol,true , function(newCol)
+    textDrawCol = newCol
+end)
+
+menu.action(lazdriftSetings,"Reset ToDefault",{"lazdriftreset"},"", function(on)
+    menu.trigger_commands("driftMinSpeed" .. " " .. 800)
+    menu.trigger_commands("conterSteering" .. " " .. "true")
+    menu.trigger_commands("shifttodrift" .. " " .. "true")
+    menu.trigger_commands("ducktodrift" .. " " .. "true")
+    menu.trigger_commands("driftMaxAngle" .. " " .. 5000)
+    menu.trigger_commands("maxGearWhileDrifting" .. " " .. 2)
+end)
+util.toast("Thank you for using LAZScript by LAZ13#3376")
+util.toast("If you have any questions, please contact me on discord")
+
+while true do
+    util.yield()
+end
+
 
 util.toast("Thanks for using LAZ-Script, I hope you enjoy it!")

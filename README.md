@@ -1,6 +1,7 @@
 # LAZScript
 
 A Lua Script with all the random stuff I come up with and gets suggested.
+Now also includes LAZDrift. 
 
 Check Releases for Changelog
 
@@ -19,9 +20,13 @@ Vehicle:
 Self:
 -Ragdoll yourself (Including don’t get up(Stay ragdolled forever))
 
--And much more too come.
+
+LAZDrift:
+-Very fun drifting. Try it out. 
 
 ```
 ### Installation:
-Drop LAZScript.lua and the lib folder in Lua Scripts folder.
+Drop LAZScript.lua In Lua Scripts folder.
+Or download it threw the Repository in Stand
+
 
