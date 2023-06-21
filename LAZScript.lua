@@ -1,7 +1,7 @@
 -- LAZScript (https://github.com/leandrocoding/lazscript)
 -- Script made by LAZ13#3376
 -- Version 1.2 (05.09.2022)
-util.require_natives(1660775568)
+util.require_natives(1640181023)
 
 -- Main Roots
 lazveh = menu.list(menu.my_root(),"Vehicle Apearance",{"lazveh"}, "Vehicle customisation")
@@ -370,8 +370,6 @@ local standDriftHotkeyPressed = false
 -- Big thanks to jayphen#6666, Murten#8818 and aaronlink127#0127 for this:
 CurrentGearOffset = memory.scan("A8 02 0F 84 ? ? ? ? 0F B7 86")+11
 NextGearOffset = memory.scan("A8 02 0F 84 ? ? ? ? 0F B7 86")+18
-
-util.require_natives("1640181023")
 
 textDrawCol = {
     r = 255,
