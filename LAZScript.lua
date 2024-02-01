@@ -372,10 +372,10 @@ CurrentGearOffset = memory.scan("A8 02 0F 84 ? ? ? ? 0F B7 86")+11
 NextGearOffset = memory.scan("A8 02 0F 84 ? ? ? ? 0F B7 86")+18
 
 textDrawCol = {
-    r = 255,
-    g = 255,
-    b = 255,
-    a = 255
+    r = 1.0,
+    g = 1.0,
+    b = 1.0,
+    a = 1.0
 }
 
 local function asDegrees(angle)
