@@ -1,7 +1,7 @@
 -- LAZScript (https://github.com/leandrocoding/lazscript)
--- Script made by LAZ13#3376
--- Version 1.2 (05.09.2022)
-util.require_natives(1640181023)
+-- Script made by LAZ13
+-- Version 1.3 (10.03.2024)
+util.require_natives("3095a")
 
 -- Main Roots
 lazveh = menu.list(menu.my_root(),"Vehicle Apearance",{"lazveh"}, "Vehicle customisation")
@@ -87,7 +87,7 @@ setaccentcol = menu.slider(accentColorMenu, "Metallic Black", {"setaccentcolor"}
     menu.set_menu_name(setaccentcol, "Accent: " .. vehicleData[on+1][2])
     currentAccentColor = on
     if veh then
-        VEHICLE._SET_VEHICLE_DASHBOARD_COLOR(veh,currentAccentColor)
+        VEHICLE.SET_VEHICLE_EXTRA_COLOUR_6(veh,currentAccentColor)
     end
 end)
 
@@ -96,7 +96,7 @@ settrimcol = menu.slider(trimColorMenu, "Metallic Black", {"settrimcolor"},"Set 
     menu.set_menu_name(settrimcol, "Trim: " .. vehicleData[on+1][2])
     currentTrimColor = on
     if veh then
-        VEHICLE._SET_VEHICLE_INTERIOR_COLOR(veh,currentTrimColor)
+        VEHICLE.SET_VEHICLE_EXTRA_COLOUR_5(veh,currentTrimColor)
     end
 end)
 
@@ -170,30 +170,6 @@ for i,v in pairs(vehicleData) do
     
 end
 
-function updateCurrentVals()
-    if PED.GET_VEHICLE_PED_IS_IN(PLAYER.PLAYER_PED_ID(),false) == 0 then
-        return
-    end
-    local veh = entities.get_user_vehicle_as_handle()
-    if veh then
-        local a = memory.alloc(8)
-        local b = memory.alloc(8)
-        local c = memory.alloc(8)
-        local d = memory.alloc(8)
-
-        VEHICLE.GET_VEHICLE_EXTRA_COLOURS(veh,a,b)
-        VEHICLE._GET_VEHICLE_DASHBOARD_COLOR(veh,c)
-        VEHICLE._GET_VEHICLE_INTERIOR_COLOR(veh,d)
-        currentPearlescentColor = memory.read_int(a)
-        currentWheelsColor = memory.read_int(b)
-        currentAccentColor = memory.read_int(c)
-        currentTrimColor = memory.read_int(d)
-        menu.trigger_command(setpearlslide, currentPearlescentColor)
-        menu.trigger_command(setwheelcolor, currentWheelsColor)
-        menu.trigger_command(setaccentcol, currentAccentColor)
-        menu.trigger_command(settrimcol, currentTrimColor)
-    end
-end
 
 function rainbowWheelColors()
     if wheelcolRainbow then
@@ -278,12 +254,6 @@ menu.click_slider(lazwindroll,"Roll up window",{"rollupwindow"},"",0,3,0,1,funct
     local veh = entities.get_user_vehicle_as_handle()
     VEHICLE.ROLL_UP_WINDOW(veh,on)
 end)
--- Update Stuff every Second
-util.create_tick_handler(function() 
-    updateCurrentVals()
-    util.yield(1000)
-    return true
-end)
 
 util.create_tick_handler(function() 
     rainbowWheelColors()
@@ -334,18 +304,18 @@ menu.toggle_loop(lazragdoll, "Dont get back up", {}, "Prevents you from getting 
 end)
 
 menu.toggle(lazragdoll, "Godmode with Ragdoll", {}, "Activate this Godmode while ragdolling. You should however deactivate the other native Godmode. (It blocks it)", function(on)
-    PLAYER._SET_PLAYER_INVINCIBLE_KEEP_RAGDOLL_ENABLED(players.user(),on)
+    PLAYER.SET_PLAYER_INVINCIBLE_BUT_HAS_REACTIONS(players.user(),on)
 
 end)
 
 menu.action(lazragdoll, "Hit me down", {}, "Ragdolls you", function(on)
-    menu.trigger_commands("getgunsupnatomisierer")
+    menu.trigger_commands("getgunupnatomizer")
     local target = ENTITY.GET_ENTITY_COORDS(PLAYER.PLAYER_PED_ID())
     MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS(target['x'], target['y'], target['z']+1, target['x'], target['y'], target['z'], 0, true, -1355376991, PLAYER.PLAYER_PED_ID(), true, false, 100)
 end)
 
-menu.action(lazragdoll, "Give Up-n-Atomisierer", {}, "You can use this to ragdoll yourself and even jump around while Ragdolling. You have to disable Godmode to be able to hityourself with it. Executes getgunsupnatomisierer to give you an Up-n-Atomisierer", function(on)
-    menu.trigger_commands("getgunsupnatomisierer")
+menu.action(lazragdoll, "Give Up-n-Atomisierer", {}, "You can use this to ragdoll yourself and even jump around while Ragdolling. You have to disable Godmode to be able to hityourself with it. Executes getgunupnatomizer to give you an Up-n-Atomisierer", function(on)
+    menu.trigger_commands("getgunupnatomizer")
 end)
 
 
@@ -470,7 +440,7 @@ local function driftmod_ontick()
     end
 
     local driftKeyPressed = PAD.IS_CONTROL_PRESSED(2, ControlVehicleDuck) or PAD.IS_DISABLED_CONTROL_PRESSED(2, ControlVehicleDuck) or PAD.IS_CONTROL_PRESSED(0, DriftActivateKeyboard) or PAD.IS_DISABLED_CONTROL_PRESSED(0, DriftActivateKeyboard) or standDriftHotkeyPressed
-    local driftKeyPressed = false
+    -- local driftKeyPressed = false
 
     if standDriftHotkeyPressed then
         driftKeyPressed = true
@@ -489,7 +459,7 @@ local function driftmod_ontick()
     if driftKeyPressed then
          
         if (PAD.GET_CONTROL_NORMAL(2, ControlVehicleBrake) > 0.1) then
-            PAD._SET_CONTROL_NORMAL(0, ControlVehicleBrake, 0)
+            PAD.SET_CONTROL_VALUE_NEXT_FRAME(0, ControlVehicleBrake, 0)
             local neg = -0.3
 
             if (PAD.IS_CONTROL_PRESSED(2, ControlVehicleSelectNextWeapon)) then
@@ -500,7 +470,7 @@ local function driftmod_ontick()
         end 
 
         local angleOfTravel  = getHeadingOfTravel(veh)
-        local angleOfHeading = ENTITY._GET_ENTITY_PHYSICS_HEADING(veh)
+        local angleOfHeading = ENTITY.GET_ENTITY_HEADING_FROM_EULERS(veh)
         
         local driftAngle = angleOfHeading - angleOfTravel
 
@@ -523,7 +493,7 @@ local function driftmod_ontick()
             zeroBasedDriftAngle = 0 - (360 - zeroBasedDriftAngle)
         end
 
-        directx.draw_text(0,0,"Drift Angle: " .. math.floor(zeroBasedDriftAngle) .. "°", ALIGN_TOP_CENTRE,1,textDrawCol)
+        directx.draw_text(0,0.05,"Drift Angle: " .. math.floor(zeroBasedDriftAngle) .. "°", ALIGN_CENTRE_LEFT,1,textDrawCol)
         local done = false
         if ((isDrifting or kmh > gs_driftMinSpeed) and (math.abs(driftAngle - 360.0) < gs_driftMaxAngle) or (driftAngle < gs_driftMaxAngle)) then
             isDrifting      = 1
@@ -651,7 +621,7 @@ menu.action(lazdriftSetings,"Reset ToDefault",{"lazdriftreset"},"", function(on)
     menu.trigger_commands("driftMaxAngle" .. " " .. 5000)
     menu.trigger_commands("maxGearWhileDrifting" .. " " .. 2)
 end)
-util.toast("Thank you for using LAZScript by LAZ13#3376")
+util.toast("Thank you for using LAZScript by LAZ13")
 util.toast("If you have any questions, please contact me on discord")
 
 while true do
