@@ -1,32 +1,27 @@
 # LAZScript
 
-A Lua Script with all the random stuff I come up with and gets suggested.
-Now also includes LAZDrift. 
+A Lua Script for [Stand](https://stand.gg) with all the random stuff I come up with. This currently includes car customizations that Stand is missing by default and LAZDrift, a fun drifting mode.
 
 Check Releases for Changelog
 
-### Features include: 
+### Features include:
 
-```
-Vehicle:
--Pearlescent color (160 Colors too choose + Rainbow wheels color)
--Wheels Color (160 Colors too choose + Rainbow wheels color)
--Accent Color (160 Colors too choose + Rainbow accent color)
--Trim Color (160 Colors too choose + Rainbow trim color)
--Vehicle prim/secondary color. Choose from the official colors.
--Roll Down/Up your windows
+#### Vehicle:
+* Pearlescent color (160 Colors to choose from + Rainbow wheels color)
+* Wheels Color (160 Colors to choose from + Rainbow wheels color)
+* Accent Color (160 Colors to choose from + Rainbow accent color)
+* Trim Color (160 Colors to choose from + Rainbow trim color)
+* Vehicle primary/secondary color. Choose from the official colors.
+* Roll Down/Up your windows
 
+#### Self:
+* Ragdoll yourself (Including don’t get up (Stay ragdolled forever))
 
-Self:
--Ragdoll yourself (Including don’t get up(Stay ragdolled forever))
+#### LAZDrift:
+* Very fun drifting mode. Try it out.
 
-
-LAZDrift:
--Very fun drifting. Try it out. 
-
-```
 ### Installation:
-Drop LAZScript.lua In Lua Scripts folder.
-Or download it threw the Repository in Stand
+Download it through the Repository in Stand, this way it should auto-update. Alternatively, you can drop LAZScript.lua into the Lua Scripts folder.
 
-
+### Remarks
+I don't play regularly anymore, therefore I might not spot new bugs. If there is a problem with the script, feel free to open a ticket here on Github or reach out on Discord [@LAZ13](https://discordapp.com/users/137670410677256192/).
